@@ -13,9 +13,9 @@ fn start_backend<R: Runtime>(app: &AppHandle<R>) -> Result<Child, String> {
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
 
     let backend_name = if cfg!(windows) {
-        "backend.exe"
+        "resources/backend.exe"
     } else {
-        "backend"
+        "resources/backend"
     };
 
     let backend_path = resource_dir.join(backend_name);
