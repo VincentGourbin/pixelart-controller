@@ -18,7 +18,7 @@ All platforms require:
 
 1. Clone and setup:
 ```bash
-git clone https://github.com/<username>/pixelart-controller.git
+git clone https://github.com/VincentGourbin/pixelart-controller.git
 cd pixelart-controller
 npm install
 ```
@@ -66,7 +66,7 @@ npm run tauri build
 
 1. Clone and setup:
 ```powershell
-git clone https://github.com/<username>/pixelart-controller.git
+git clone https://github.com/VincentGourbin/pixelart-controller.git
 cd pixelart-controller
 npm install
 ```
@@ -118,7 +118,7 @@ sudo apt-get install -y \
 
 1. Clone and setup:
 ```bash
-git clone https://github.com/<username>/pixelart-controller.git
+git clone https://github.com/VincentGourbin/pixelart-controller.git
 cd pixelart-controller
 npm install
 ```
@@ -273,6 +273,6 @@ cd python-backend && pip install -r requirements.txt
 
 For build issues, check:
 1. This guide's troubleshooting section
-2. [GitHub Issues](https://github.com/<username>/pixelart-controller/issues)
+2. [GitHub Issues](https://github.com/VincentGourbin/pixelart-controller/issues)
 3. Tauri documentation: https://tauri.app/
 4. PyInstaller documentation: https://pyinstaller.org/

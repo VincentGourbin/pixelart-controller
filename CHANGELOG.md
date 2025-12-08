@@ -31,5 +31,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Packaging**: PyInstaller (backend) + Tauri bundler (app)
 - **Build**: Cross-platform support with single `npm run build:all` command
 
-[Unreleased]: https://github.com/<username>/pixelart-controller/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/<username>/pixelart-controller/releases/tag/v0.1.0
+[Unreleased]: https://github.com/VincentGourbin/pixelart-controller/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/VincentGourbin/pixelart-controller/releases/tag/v0.1.0

@@ -31,7 +31,7 @@ PixelArt Controller solves these issues by:
 
 ## Installation
 
-Download the latest release for your platform from [Releases](https://github.com/<username>/pixelart-controller/releases):
+Download the latest release for your platform from [Releases](https://github.com/VincentGourbin/pixelart-controller/releases):
 
 - **macOS**: Download the `.dmg` file
 - **Windows**: Download the `.exe` or `.msi` installer
