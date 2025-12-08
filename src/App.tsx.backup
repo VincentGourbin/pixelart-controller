@@ -1,0 +1,1064 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Toaster, toast } from 'react-hot-toast';
+import {
+  Type,
+  Image as ImageIcon,
+  Grid3x3,
+  Zap,
+  Settings,
+  Palette,
+  WifiOff,
+  Wifi,
+  Clock,
+  Music
+} from 'lucide-react';
+import { api } from './services/api';
+import { useApp } from './context/AppContext';
+import type { Device } from './types/led-panel';
+
+type Tab = 'text' | 'image' | 'pixels' | 'modes' | 'settings';
+
+function App() {
+  const { deviceInfo, setDeviceInfo, status } = useApp();
+  const [activeTab, setActiveTab] = useState<Tab>('text');
+
+  // Scanner state
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [lastDeviceAddress, setLastDeviceAddress] = useState<string | null>(null);
+
+  // Text control state
+  const [text, setText] = useState('Hello!');
+  const [textColor, setTextColor] = useState('FF00FF');
+  const [font, setFont] = useState('CUSONG');
+  const [animation, setAnimation] = useState(0);
+  const [speed, setSpeed] = useState(80);
+  const [rainbowMode, setRainbowMode] = useState(0);
+  const [charHeight, setCharHeight] = useState<number | undefined>(16);
+
+  // Clock settings
+  const [clockStyle, setClockStyle] = useState(1);
+  const [format24, setFormat24] = useState(true);
+  const [showDate, setShowDate] = useState(true);
+
+  // Rhythm settings
+  const [rhythmStyle, setRhythmStyle] = useState(0);
+  const [rhythmLevels, setRhythmLevels] = useState(Array(11).fill(8));
+
+  // Settings state
+  const [brightness, setBrightness] = useState(50);
+  const [orientation, setOrientation] = useState(0);
+  const [isPowered, setIsPowered] = useState(true);
+
+  // Pixel Art state
+  const [pixelColor, setPixelColor] = useState('#FF00FF');
+  const [pixelGrid, setPixelGrid] = useState<Record<string, string>>({});
+
+  // Image preview state
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const tabs = [
+    { id: 'text' as const, name: 'Text', icon: Type, gradient: 'from-cyan-500 to-blue-500' },
+    { id: 'image' as const, name: 'Image', icon: ImageIcon, gradient: 'from-pink-500 to-purple-500' },
+    { id: 'pixels' as const, name: 'Pixel Art', icon: Grid3x3, gradient: 'from-green-400 to-cyan-500' },
+    { id: 'modes' as const, name: 'Modes', icon: Palette, gradient: 'from-yellow-400 to-orange-500' },
+    { id: 'settings' as const, name: 'Settings', icon: Settings, gradient: 'from-purple-500 to-pink-500' },
+  ];
+
+  const handleScan = async () => {
+    setScanning(true);
+    try {
+      const foundDevices = await api.scanDevices();
+      setDevices(foundDevices);
+      toast.success(`Found ${foundDevices.length} device(s)`);
+    } catch (error) {
+      console.error('Scan failed:', error);
+      toast.error('Scan failed');
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const handleConnect = async (address: string) => {
+    try {
+      await api.connect(address);
+      const info = await api.getDeviceInfo();
+      setDeviceInfo(info);
+      setLastDeviceAddress(address);
+      toast.success('Connected successfully');
+    } catch (error) {
+      console.error('Connection failed:', error);
+      toast.error('Connection failed');
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (status.device_address) {
+      setLastDeviceAddress(status.device_address);
+    }
+
+    try {
+      await api.disconnect();
+      setDeviceInfo(null);
+      toast.success('Disconnected');
+    } catch (error) {
+      console.error('Disconnect failed:', error);
+      setDeviceInfo(null);
+      toast.warning('Device was already disconnected');
+    }
+  };
+
+  const handleSendText = async () => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+    try {
+      await api.sendText({
+        text,
+        color: textColor,
+        font,
+        animation,
+        speed,
+        rainbow_mode: rainbowMode,
+        char_height: charHeight,
+      });
+      toast.success('Text sent');
+    } catch (error) {
+      console.error('Send text failed:', error);
+      toast.error('Failed to send text');
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+
+    try {
+      await api.sendImage(file);
+      toast.success('Image sent');
+    } catch (error) {
+      console.error('Send image failed:', error);
+      toast.error('Failed to send image');
+    }
+  };
+
+  const handleSetClockMode = async () => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+    try {
+      await api.setClockMode({ style: clockStyle, format_24: format24, show_date: showDate });
+      toast.success('Clock mode activated');
+    } catch (error) {
+      console.error('Set clock mode failed:', error);
+      toast.error('Failed to set clock mode');
+    }
+  };
+
+  const handleSetRhythmMode = async () => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+    try {
+      await api.setRhythmMode({ style: rhythmStyle, levels: rhythmLevels });
+      toast.success('Rhythm mode activated');
+    } catch (error) {
+      console.error('Set rhythm mode failed:', error);
+      toast.error('Failed to set rhythm mode');
+    }
+  };
+
+  const handleBrightnessChange = async (value: number) => {
+    setBrightness(value);
+    if (!status.connected) return;
+    try {
+      await api.setBrightness({ brightness: value });
+    } catch (error) {
+      console.error('Set brightness failed:', error);
+    }
+  };
+
+  const handleOrientationChange = async (value: number) => {
+    setOrientation(value);
+    if (!status.connected) return;
+    try {
+      await api.setOrientation({ orientation: value });
+      toast.success(`Rotated to ${value * 90}°`);
+    } catch (error) {
+      console.error('Set orientation failed:', error);
+      toast.error('Failed to set orientation');
+    }
+  };
+
+  const handlePowerToggle = async () => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+    const newPowerState = !isPowered;
+    setIsPowered(newPowerState);
+    try {
+      await api.setPower({ on: newPowerState });
+      toast.success(newPowerState ? 'Power ON' : 'Power OFF');
+    } catch (error) {
+      console.error('Set power failed:', error);
+      toast.error('Failed to toggle power');
+      setIsPowered(!newPowerState);
+    }
+  };
+
+  // Pixel Art handlers
+  const handlePixelClick = (x: number, y: number) => {
+    setPixelGrid(prev => ({
+      ...prev,
+      [`${x},${y}`]: pixelColor
+    }));
+  };
+
+  const handleClearPixels = () => {
+    setPixelGrid({});
+    toast.success('Canvas cleared');
+  };
+
+  const handleSendPixels = async () => {
+    if (!status.connected) {
+      toast.error('Connect to device first');
+      return;
+    }
+
+    const pixelCount = Object.keys(pixelGrid).length;
+    if (pixelCount === 0) {
+      toast.error('No pixels to send');
+      return;
+    }
+
+    try {
+      toast.loading('Activating DIY mode...');
+      await api.setMode('diy');
+
+      const pixels = Object.entries(pixelGrid).map(([coords, color]) => {
+        const [x, y] = coords.split(',').map(Number);
+        return {
+          x,
+          y,
+          color: color.replace('#', '')
+        };
+      });
+
+      toast.loading(`Sending ${pixelCount} pixels...`);
+      await api.sendPixels(pixels);
+
+      toast.success(`${pixelCount} pixels sent!`);
+    } catch (error) {
+      console.error('Send pixels failed:', error);
+      toast.error('Failed to send pixels');
+    }
+  };
+
+  useEffect(() => {
+    api.connectWebSocket((msg) => {
+      if (msg.connected && msg.device_address) {
+        setLastDeviceAddress(msg.device_address);
+      }
+    });
+    return () => api.disconnectWebSocket();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-700 via-blue-700 to-pink-700 overflow-x-hidden">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(168, 85, 247, 0.1))',
+            color: '#fff',
+            border: '2px solid rgba(0, 255, 255, 0.3)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 0 20px rgba(0, 255, 255, 0.2)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#00FF00',
+              secondary: '#000',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#FF00FF',
+              secondary: '#000',
+            },
+          },
+        }}
+      />
+
+      {/* Header with Device Info */}
+      <header className="px-6 py-4 bg-gradient-to-r from-purple-900/90 via-blue-900/90 to-purple-900/90 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_13px_rgba(0,255,255,0.8)]"
+            >
+              <Zap className="w-8 h-8 text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
+            </motion.div>
+            <div>
+              <h1 className="text-3xl font-black bg-gradient-to-r from-cyan-300 via-purple-300 to-pink-300 text-transparent bg-clip-text drop-shadow-[0_0_6px_rgba(0,255,255,0.5)]">
+                iPixel Control
+              </h1>
+              <p className="text-base text-cyan-200 font-bold">LED Panel Control Center</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {deviceInfo && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 shadow-[0_0_6px_rgba(168,85,247,0.3)]"
+              >
+                <span className="text-lg font-black text-purple-300">
+                  {deviceInfo.width}×{deviceInfo.height}
+                </span>
+              </motion.div>
+            )}
+
+            <motion.div
+              className={`flex items-center gap-3 px-5 py-2.5 rounded-lg ${
+                status.connected
+                  ? 'bg-green-500/20 border-green-400/50 shadow-[0_0_6px_rgba(0,255,0,0.3)]'
+                  : 'bg-gray-500/20 border-gray-500/50'
+              }`}
+            >
+              {status.connected ? (
+                <>
+                  <Wifi className="w-5 h-5 text-green-400" />
+                  <span className="text-sm font-bold text-green-300">Connected</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-5 h-5 text-gray-400" />
+                  <span className="text-sm font-bold text-gray-400">Disconnected</span>
+                </>
+              )}
+            </motion.div>
+
+            {status.connected && (
+              <motion.button
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                onClick={handleDisconnect}
+                className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-300 font-bold hover:shadow-[0_0_6px_rgba(255,0,0,0.5)] transition-all"
+              >
+                Disconnect
+              </motion.button>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Horizontal Tabs Navigation */}
+      <div className="bg-gray-900/90 backdrop-blur-md px-6 py-2">
+        <div className="flex gap-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <motion.button
+                key={tab.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-3 rounded-lg font-bold text-base flex items-center gap-2 transition-all ${
+                  isActive
+                    ? `bg-gradient-to-r ${tab.gradient} text-white shadow-[0_0_30px_currentColor]`
+                    : 'bg-gray-800/80 text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{tab.name}</span>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Content Area - Single Scrollable Zone */}
+      <main className="p-6">
+        <div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeTab === 'text' && (
+                <div className="max-w-4xl mx-auto space-y-6 px-6">
+                  <div className="mb-6">
+                    <h2 className="text-4xl font-black bg-gradient-to-r from-cyan-400 to-blue-400 text-transparent bg-clip-text mb-2 drop-shadow-[0_0_6px_rgba(0,255,255,0.5)]">
+                      Text Display
+                    </h2>
+                    <p className="text-cyan-200 font-semibold">Send animated text to your LED panel</p>
+                  </div>
+
+                  {/* Text Input */}
+                  <div className="bg-gradient-to-br from-cyan-900/40 via-blue-900/40 to-cyan-900/40 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,255,0.4)]">
+                    <label className="text-sm font-bold text-cyan-200 mb-3 block uppercase tracking-wider">Message</label>
+                    <input
+                      type="text"
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      className="w-full px-5 py-4 rounded-xl bg-cyan-950/50
+                               text-white text-lg focus:border-cyan-300 focus:outline-none focus:shadow-[0_0_8px_rgba(0,255,255,0.6)] transition-all"
+                      placeholder="Enter your message..."
+                    />
+                  </div>
+
+                  {/* Color Picker */}
+                  <div className="bg-gradient-to-br from-pink-900/40 via-purple-900/40 to-pink-900/40 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(255,0,255,0.4)]">
+                    <label className="text-sm font-bold text-pink-200 mb-3 block uppercase tracking-wider">Text Color</label>
+                    <div className="flex gap-4">
+                      <input
+                        type="color"
+                        value={`#${textColor}`}
+                        onChange={(e) => setTextColor(e.target.value.replace('#', ''))}
+                        className="w-24 h-24 rounded-xl cursor-pointer shadow-[0_0_10px_rgba(255,0,255,0.7)]"
+                      />
+                      <div className="flex-1">
+                        <div className="text-xs text-pink-200 mb-2 uppercase tracking-wide font-bold">Hex Color Code</div>
+                        <input
+                          type="text"
+                          value={textColor.toUpperCase()}
+                          onChange={(e) => setTextColor(e.target.value.replace('#', ''))}
+                          className="w-full px-4 py-3 rounded-xl bg-pink-950/50
+                                   text-pink-200 font-mono text-lg focus:border-pink-300 focus:outline-none focus:shadow-[0_0_8px_rgba(255,0,255,0.6)] transition-all"
+                          placeholder="FF00FF"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Font & Animation */}
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-gradient-to-br from-purple-900/40 via-indigo-900/40 to-purple-900/40 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(168,85,247,0.4)]">
+                      <label className="text-sm font-bold text-purple-200 mb-3 block uppercase tracking-wider">Font</label>
+                      <select
+                        value={font}
+                        onChange={(e) => setFont(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-purple-950/50
+                                 text-white text-base focus:border-purple-300 focus:outline-none focus:shadow-[0_0_8px_rgba(168,85,247,0.6)] transition-all cursor-pointer"
+                      >
+                        <option value="CUSONG">CUSONG</option>
+                        <option value="SIMSUN">SIMSUN</option>
+                        <option value="VCR_OSD_MONO">VCR OSD MONO</option>
+                      </select>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-yellow-900/40 via-orange-900/40 to-yellow-900/40 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(255,255,0,0.4)]">
+                      <label className="text-sm font-bold text-yellow-200 mb-3 block uppercase tracking-wider">Animation</label>
+                      <select
+                        value={animation}
+                        onChange={(e) => setAnimation(Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-xl bg-yellow-950/50
+                                 text-white text-base focus:border-yellow-300 focus:outline-none focus:shadow-[0_0_8px_rgba(255,255,0,0.6)] transition-all cursor-pointer"
+                      >
+                        <option value={0}>None</option>
+                        <option value={1}>Scroll Left</option>
+                        <option value={2}>Scroll Right</option>
+                        <option value={3}>Scroll Up</option>
+                        <option value={4}>Scroll Down</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Text Size */}
+                  <div className="bg-gradient-to-br from-green-900/40 via-emerald-900/40 to-green-900/40 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,0,0.4)]">
+                    <div className="flex items-center justify-between mb-4">
+                      <label className="text-sm font-bold text-green-300 uppercase tracking-wider">Text Size</label>
+                      <span className="text-xl text-green-200 font-black">{charHeight}px</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      {[16, 20, 24, 32].map((size) => (
+                        <motion.button
+                          key={size}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setCharHeight(size)}
+                          className={`px-5 py-4 rounded-xl text-base font-black transition-all ${
+                            charHeight === size
+                              ? 'bg-gradient-to-r from-green-400 to-cyan-500 text-gray-900 shadow-[0_0_10px_rgba(0,255,0,0.7)]'
+                              : 'bg-gray-700/70 text-gray-200 hover:bg-gray-600'
+                          }`}
+                        >
+                          {size}px
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Send Button */}
+                  <button
+                    onClick={handleSendText}
+                    disabled={!status.connected || !text}
+                    className="w-full px-6 py-5 rounded-xl bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500
+                             text-white font-black text-xl disabled:opacity-50 disabled:cursor-not-allowed
+                             shadow-[0_0_10px_rgba(0,255,255,0.5)] hover:shadow-[0_0_16px_rgba(0,255,255,0.7)] transition-all"
+                  >
+                    {!status.connected ? 'Connect Device First' : 'Send to Panel'}
+                  </button>
+                </div>
+              )}
+
+              {activeTab === 'image' && (
+                <div className="max-w-4xl mx-auto space-y-6 px-6">
+                  <div className="mb-6">
+                    <h2 className="text-4xl font-black bg-gradient-to-r from-pink-400 to-purple-400 text-transparent bg-clip-text mb-2 drop-shadow-[0_0_6px_rgba(255,0,255,0.5)]">
+                      Image & GIF Display
+                    </h2>
+                    <p className="text-pink-200 font-semibold">Upload images or animated GIFs to display on your panel</p>
+                  </div>
+
+                  {/* Upload Area */}
+                  <div className="bg-gradient-to-br from-pink-900/40 via-purple-900/40 to-pink-900/40 backdrop-blur-md rounded-2xl p-8 border-2 border-dashed border-pink-400/30400 hover:border-pink-300 hover:shadow-[0_0_16px_rgba(255,0,255,0.5)] transition-all">
+                    <input
+                      type="file"
+                      id="image-upload"
+                      accept="image/*,.gif"
+                      onChange={handleImageUpload}
+                      disabled={!status.connected}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className={`cursor-pointer block ${!status.connected && 'opacity-50 cursor-not-allowed'}`}
+                    >
+                      <div className="text-center">
+                        <div className="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-pink-500/50 to-purple-500/50 flex items-center justify-center shadow-[0_0_13px_rgba(255,0,255,0.5)]">
+                          <ImageIcon className="w-12 h-12 text-pink-200" />
+                        </div>
+                        <p className="text-2xl text-pink-200 font-black mb-2">Click to upload image or GIF</p>
+                        <p className="text-sm text-pink-200 font-semibold">Supports PNG, JPG, GIF, WebP formats</p>
+                        <p className="text-xs text-gray-300 mt-2">Images will be resized to panel dimensions</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(168,85,247,0.4)]"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="text-sm font-bold text-purple-300 uppercase tracking-wider">Preview</label>
+                        <button
+                          onClick={() => setImagePreview(null)}
+                          className="px-4 py-2 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-300 text-sm font-bold hover:shadow-[0_0_6px_rgba(255,0,0,0.5)] transition-all"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                      <div className="flex justify-center p-8 bg-gray-900/70 rounded-xl">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="max-w-full max-h-80 object-contain rounded-lg"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'pixels' && (
+                <div className="space-y-6 px-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-4xl font-black bg-gradient-to-r from-green-400 to-cyan-400 text-transparent bg-clip-text mb-2 drop-shadow-[0_0_6px_rgba(0,255,0,0.5)]">
+                        Pixel Art Editor
+                      </h2>
+                      <p className="text-green-200 font-semibold">Draw directly on your LED panel</p>
+                    </div>
+                    <div className="px-5 py-3 rounded-lg bg-gradient-to-r from-green-500/40 to-cyan-500/40 shadow-[0_0_10px_rgba(0,255,0,0.5)]">
+                      <span className="text-base font-black text-green-200">
+                        {Object.keys(pixelGrid).length} / {deviceInfo ? deviceInfo.width * deviceInfo.height : 1024} pixels
+                      </span>
+                    </div>
+                  </div>
+
+                  {deviceInfo ? (
+                    <div className="grid lg:grid-cols-[1fr_350px] gap-6">
+                      {/* Canvas Area */}
+                      <div className="flex items-center justify-center">
+                        <div className="w-full max-w-4xl">
+                          <div
+                            className="grid gap-1 p-4 bg-gray-900/70 rounded-2xl shadow-[0_0_16px_rgba(0,255,255,0.5)] backdrop-blur-md mx-auto"
+                            style={{
+                              gridTemplateColumns: `repeat(${deviceInfo.width}, minmax(0, 1fr))`,
+                              width: 'fit-content'
+                            }}
+                          >
+                            {Array.from({ length: deviceInfo.width * deviceInfo.height }).map((_, index) => {
+                              const x = index % deviceInfo.width;
+                              const y = Math.floor(index / deviceInfo.width);
+                              const pixelKey = `${x},${y}`;
+                              const color = pixelGrid[pixelKey] || '#000000';
+
+                              return (
+                                <motion.div
+                                  key={index}
+                                  onClick={() => handlePixelClick(x, y)}
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  className="w-8 h-8 rounded cursor-pointer hover:border-cyan-300 hover:shadow-[0_0_15px_currentColor] transition-all"
+                                  style={{ backgroundColor: color }}
+                                  title={`(${x}, ${y})`}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Toolbar Sidebar */}
+                      <div className="space-y-4">
+                        {/* Color Picker */}
+                        <div className="bg-gray-800/90 backdrop-blur-md rounded-xl p-5400 shadow-[0_0_13px_rgba(255,0,255,0.4)]">
+                          <h3 className="text-sm font-bold text-pink-300 mb-4 uppercase tracking-wider">Brush Color</h3>
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="color"
+                                value={pixelColor}
+                                onChange={(e) => setPixelColor(e.target.value)}
+                                className="w-20 h-20 rounded-xl cursor-pointer shadow-[0_0_10px_rgba(255,0,255,0.7)]"
+                              />
+                              <div className="flex-1">
+                                <div className="text-xs text-pink-200 mb-1 uppercase tracking-wide font-bold">Hex Color</div>
+                                <input
+                                  type="text"
+                                  value={pixelColor.toUpperCase()}
+                                  onChange={(e) => setPixelColor(e.target.value)}
+                                  className="w-full px-3 py-2 rounded-lg bg-gray-900/70 text-pink-200 font-mono text-sm focus:border-pink-300 focus:outline-none focus:shadow-[0_0_8px_rgba(255,0,255,0.6)] transition-all"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Quick Color Presets */}
+                            <div>
+                              <div className="text-xs text-pink-200 mb-2 uppercase tracking-wide font-bold">Quick Colors</div>
+                              <div className="grid grid-cols-6 gap-2">
+                                {['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+                                  '#FF6600', '#88FF00', '#0088FF', '#FF0088', '#8800FF', '#FFFFFF'].map((color) => (
+                                  <button
+                                    key={color}
+                                    onClick={() => setPixelColor(color)}
+                                    className={`w-10 h-10 rounded-lg transition-all hover:scale-110 ${
+                                      pixelColor === color ? 'border-white shadow-[0_0_20px_currentColor]' : 'border-gray-600'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Tools */}
+                        <div className="bg-gray-800/90 backdrop-blur-md rounded-xl p-5400 shadow-[0_0_13px_rgba(255,255,0,0.4)]">
+                          <h3 className="text-sm font-bold text-yellow-300 mb-4 uppercase tracking-wider">Tools</h3>
+                          <div className="space-y-3">
+                            <button
+                              onClick={() => setPixelColor('#000000')}
+                              className="w-full px-4 py-3 rounded-xl bg-gray-700/70 hover:bg-gray-600 text-white font-bold transition-all flex items-center gap-3"
+                            >
+                              <div className="w-6 h-6 rounded bg-black" />
+                              <span>Eraser (Black)</span>
+                            </button>
+                            <button
+                              onClick={handleClearPixels}
+                              className="w-full px-4 py-3 rounded-xl bg-red-500/30 hover:bg-red-500/50 text-red-300 font-bold hover:shadow-[0_0_10px_rgba(255,0,0,0.5)] transition-all"
+                            >
+                              Clear Canvas
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Send Button */}
+                        <button
+                          onClick={handleSendPixels}
+                          disabled={!status.connected || Object.keys(pixelGrid).length === 0}
+                          className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-green-400 via-cyan-500 to-blue-500
+                                     text-gray-900 font-black text-lg disabled:opacity-50 disabled:cursor-not-allowed
+                                     shadow-[0_0_10px_rgba(0,255,0,0.5)] hover:shadow-[0_0_16px_rgba(0,255,0,0.7)] transition-all"
+                        >
+                          {!status.connected
+                            ? 'Connect Device First'
+                            : Object.keys(pixelGrid).length === 0
+                              ? 'Draw Some Pixels'
+                              : `Send to Panel`}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-20">
+                      <div className="text-center">
+                        <Grid3x3 className="w-32 h-32 mx-auto mb-6 text-gray-600" />
+                        <p className="text-2xl text-gray-400 font-bold">Connect to a device to start drawing</p>
+                        <p className="text-sm text-gray-500 mt-2">Go to Settings tab to scan and connect</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'modes' && (
+                <div className="max-w-5xl mx-auto space-y-6 px-6">
+                  <div className="mb-6">
+                    <h2 className="text-4xl font-black bg-gradient-to-r from-yellow-400 to-orange-400 text-transparent bg-clip-text mb-2 drop-shadow-[0_0_6px_rgba(255,255,0,0.5)]">
+                      Special Modes
+                    </h2>
+                    <p className="text-yellow-200 font-semibold">Activate dynamic display modes for your LED panel</p>
+                  </div>
+
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    {/* Clock Mode */}
+                    <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,255,0.4)]">
+                      <div className="mb-6">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500/50 to-blue-500/50 flex items-center justify-center shadow-[0_0_10px_rgba(0,255,255,0.5)]">
+                            <Clock className="w-7 h-7 text-cyan-200" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black text-cyan-200">Clock Mode</h3>
+                            <p className="text-sm text-cyan-200 font-semibold">Display time on your panel</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-5">
+                        <div>
+                          <label className="text-sm font-bold text-cyan-300 mb-3 block uppercase tracking-wider">Clock Style</label>
+                          <select
+                            value={clockStyle}
+                            onChange={(e) => setClockStyle(Number(e.target.value))}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-900/70
+                                     text-white text-base focus:border-cyan-300 focus:outline-none focus:shadow-[0_0_8px_rgba(0,255,255,0.6)] transition-all cursor-pointer"
+                          >
+                            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                              <option key={i} value={i}>Style {i}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-sm font-bold text-cyan-300 block uppercase tracking-wider">Options</label>
+                          <div className="space-y-2">
+                            <label className="flex items-center gap-3 p-3 rounded-xl bg-gray-900/50 hover:bg-gray-900/70 cursor-pointer hover:border-cyan-400 hover:shadow-[0_0_5px_rgba(0,255,255,0.3)] transition-all">
+                              <input
+                                type="checkbox"
+                                checked={format24}
+                                onChange={(e) => setFormat24(e.target.checked)}
+                                className="w-5 h-5 rounded border-gray-600 text-cyan-500 focus:ring-cyan-500 cursor-pointer"
+                              />
+                              <span className="text-white font-bold">24-hour format</span>
+                            </label>
+                            <label className="flex items-center gap-3 p-3 rounded-xl bg-gray-900/50 hover:bg-gray-900/70 cursor-pointer hover:border-cyan-400 hover:shadow-[0_0_5px_rgba(0,255,255,0.3)] transition-all">
+                              <input
+                                type="checkbox"
+                                checked={showDate}
+                                onChange={(e) => setShowDate(e.target.checked)}
+                                className="w-5 h-5 rounded border-gray-600 text-cyan-500 focus:ring-cyan-500 cursor-pointer"
+                              />
+                              <span className="text-white font-bold">Show date</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleSetClockMode}
+                          disabled={!status.connected}
+                          className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500
+                                   text-white font-black text-base shadow-[0_0_13px_rgba(0,255,255,0.7)] hover:shadow-[0_0_20px_rgba(0,255,255,0.9)] transition-all
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {!status.connected ? 'Connect Device First' : 'Activate Clock Mode'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Rhythm Mode */}
+                    <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,0,0.4)]">
+                      <div className="mb-6">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500/50 to-emerald-500/50 flex items-center justify-center shadow-[0_0_10px_rgba(0,255,0,0.5)]">
+                            <Music className="w-7 h-7 text-green-200" />
+                          </div>
+                          <div>
+                            <h3 className="text-2xl font-black text-green-200">Music Beat Mode</h3>
+                            <p className="text-sm text-green-200 font-semibold">Sync with audio rhythm</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-5">
+                        <div>
+                          <label className="text-sm font-bold text-green-300 mb-3 block uppercase tracking-wider">Beat Style</label>
+                          <select
+                            value={rhythmStyle}
+                            onChange={(e) => setRhythmStyle(Number(e.target.value))}
+                            className="w-full px-4 py-3 rounded-xl bg-gray-900/70
+                                     text-white text-base focus:border-green-300 focus:outline-none focus:shadow-[0_0_8px_rgba(0,255,0,0.6)] transition-all cursor-pointer"
+                          >
+                            {[0, 1, 2, 3, 4].map(i => (
+                              <option key={i} value={i}>Style {i}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-sm font-bold text-green-300 block uppercase tracking-wider">Level Controls</label>
+                          <div className="grid grid-cols-11 gap-1 p-4 rounded-xl bg-gray-900/50">
+                            {rhythmLevels.map((level, i) => (
+                              <div key={i} className="flex flex-col items-center gap-1">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="15"
+                                  value={level}
+                                  onChange={(e) => {
+                                    const newLevels = [...rhythmLevels];
+                                    newLevels[i] = Number(e.target.value);
+                                    setRhythmLevels(newLevels);
+                                  }}
+                                  className="w-6 h-16 slider-vertical"
+                                  style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
+                                />
+                                <span className="text-xs text-gray-300 font-bold">{i + 1}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={handleSetRhythmMode}
+                          disabled={!status.connected}
+                          className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-green-400 to-emerald-500
+                                   text-gray-900 font-black text-base shadow-[0_0_13px_rgba(0,255,0,0.7)] hover:shadow-[0_0_20px_rgba(0,255,0,0.9)] transition-all
+                                   disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {!status.connected ? 'Connect Device First' : 'Activate Music Beat'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'settings' && (
+                <div className="max-w-5xl mx-auto space-y-6 px-6">
+                  <div className="mb-6">
+                    <h2 className="text-4xl font-black bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text mb-2 drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]">
+                      Settings
+                    </h2>
+                    <p className="text-purple-200 font-semibold">Manage device connection and display settings</p>
+                  </div>
+
+                  {/* Connection Section */}
+                  <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(168,85,247,0.4)]">
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-black text-purple-200 mb-1">Device Connection</h3>
+                      <p className="text-sm text-purple-200 font-semibold">Scan and connect to your LED panel via Bluetooth</p>
+                    </div>
+
+                    {/* Connection Status */}
+                    {status.connected ? (
+                      <div className="mb-6 p-5 rounded-xl bg-green-500/30 shadow-[0_0_13px_rgba(0,255,0,0.5)]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-green-500/50 flex items-center justify-center">
+                              <Wifi className="w-6 h-6 text-green-200" />
+                            </div>
+                            <div>
+                              <p className="text-base font-black text-green-200">Connected</p>
+                              <p className="text-sm text-green-200 font-mono">{status.device_address || 'Unknown device'}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={handleDisconnect}
+                            className="px-5 py-2.5 rounded-xl bg-red-500/30 hover:bg-red-500/50 text-red-300 font-black hover:shadow-[0_0_10px_rgba(255,0,0,0.5)] transition-all"
+                          >
+                            Disconnect
+                          </button>
+                        </div>
+                      </div>
+                    ) : lastDeviceAddress ? (
+                      <div className="mb-6 p-5 rounded-xl bg-yellow-500/30 shadow-[0_0_13px_rgba(255,255,0,0.5)]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-yellow-500/50 flex items-center justify-center">
+                              <WifiOff className="w-6 h-6 text-yellow-200" />
+                            </div>
+                            <div>
+                              <p className="text-base font-black text-yellow-200">Disconnected</p>
+                              <p className="text-sm text-yellow-200 font-mono">{lastDeviceAddress}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleConnect(lastDeviceAddress)}
+                            className="px-5 py-2.5 rounded-xl bg-purple-500/30 hover:bg-purple-500/50 text-purple-300 font-black hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-all"
+                          >
+                            Reconnect
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Scan Button */}
+                    <button
+                      onClick={handleScan}
+                      disabled={scanning || status.connected}
+                      className="w-full px-6 py-4 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500
+                               text-white font-black text-base disabled:opacity-50 disabled:cursor-not-allowed
+                               shadow-[0_0_13px_rgba(168,85,247,0.7)] hover:shadow-[0_0_20px_rgba(168,85,247,0.9)] transition-all mb-4"
+                    >
+                      {scanning ? 'Scanning for Devices...' : 'Scan for Devices'}
+                    </button>
+
+                    {/* Device List */}
+                    {devices.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-sm font-bold text-purple-300 uppercase tracking-wider">Available Devices</p>
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {devices
+                            .filter((device) => device.address !== status.device_address)
+                            .map((device) => (
+                              <div
+                                key={device.address}
+                                className="p-4 rounded-xl bg-gray-900/70 hover:border-purple-300 hover:shadow-[0_0_10px_rgba(168,85,247,0.4)] transition-all"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-black text-white">{device.name}</p>
+                                    <p className="text-sm text-gray-300 font-mono">{device.address}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => handleConnect(device.address)}
+                                    disabled={status.connected}
+                                    className="px-4 py-2 rounded-lg bg-purple-500/30 hover:bg-purple-500/50 text-purple-300 font-bold
+                                             hover:shadow-[0_0_6px_rgba(168,85,247,0.5)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    Connect
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Display Settings */}
+                  <div className="grid lg:grid-cols-2 gap-6">
+                    {/* Brightness */}
+                    <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(255,255,0,0.4)]">
+                      <div className="mb-6">
+                        <h3 className="text-2xl font-black text-yellow-200 mb-1">Brightness</h3>
+                        <p className="text-sm text-yellow-200 font-semibold">Adjust LED panel brightness</p>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-yellow-300 font-bold">Current Level</span>
+                          <span className="text-4xl font-black text-yellow-200">{brightness}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={brightness}
+                          onChange={(e) => handleBrightnessChange(Number(e.target.value))}
+                          disabled={!status.connected}
+                          className="w-full h-3 rounded-lg appearance-none cursor-pointer bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed
+                                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r
+                                   [&::-webkit-slider-thumb]:from-yellow-400 [&::-webkit-slider-thumb]:to-orange-500
+                                   [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(255,255,0,0.7)]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Power */}
+                    <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,0,0.4)]">
+                      <div className="mb-6">
+                        <h3 className="text-2xl font-black text-green-200 mb-1">Power</h3>
+                        <p className="text-sm text-green-200 font-semibold">Turn panel on or off</p>
+                      </div>
+                      <div className="flex items-center justify-between p-5 rounded-xl bg-gray-900/70">
+                        <span className={`text-3xl font-black transition-colors ${isPowered ? 'text-green-300' : 'text-gray-400'}`}>
+                          {isPowered ? 'ON' : 'OFF'}
+                        </span>
+                        <button
+                          onClick={handlePowerToggle}
+                          disabled={!status.connected}
+                          className={`relative w-20 h-10 rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed
+                                     ${isPowered ? 'bg-green-500 border-green-300 shadow-[0_0_10px_rgba(0,255,0,0.7)]' : 'bg-gray-600 border-gray-500'}`}
+                        >
+                          <div className={`absolute top-1 left-1 w-8 h-8 rounded-full bg-white shadow-lg transition-transform duration-300
+                                          ${isPowered ? 'transform translate-x-10' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Orientation */}
+                  <div className="bg-gray-800/90 backdrop-blur-md rounded-2xl p-6 shadow-[0_0_13px_rgba(0,255,255,0.4)]">
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-black text-cyan-200 mb-1">Orientation</h3>
+                      <p className="text-sm text-cyan-200 font-semibold">Rotate display output</p>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      {[0, 1, 2, 3].map((value) => (
+                        <motion.button
+                          key={value}
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleOrientationChange(value)}
+                          disabled={!status.connected}
+                          className={`px-6 py-5 rounded-xl font-black text-xl transition-all ${
+                            orientation === value
+                              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-[0_0_13px_rgba(0,255,255,0.7)]'
+                              : 'bg-gray-700/70 text-gray-200 hover:bg-gray-600'
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        >
+                          {value * 90}°
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default App;

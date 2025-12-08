@@ -1,0 +1,8 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pypixelcolor==0.3.0
+bleak==0.22.3
+python-multipart==0.0.19
+websockets==14.1
+pydantic==2.10.3
+pyinstaller==6.3.0

@@ -1,0 +1,43 @@
+{
+  "name": "pixelart-controller",
+  "productName": "PixelArt Controller",
+  "version": "0.1.0",
+  "description": "Desktop application for controlling iPixel Color LED panels",
+  "author": "Vincent",
+  "license": "MIT",
+  "private": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "build:backend": "python python-backend/build.py",
+    "build:all": "npm run build:backend && npm run tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "bootstrap": "^4.6.2",
+    "classnames": "^2.3.2",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.556.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hot-toast": "^2.6.0",
+    "reactstrap": "^9.2.3",
+    "sass": "^1.94.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@tauri-apps/cli": "^2",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}

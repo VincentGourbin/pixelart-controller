@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+python-backend/venv/
+python-backend/__pycache__/
+python-backend/**/__pycache__/
+python-backend/dist/
+python-backend/build/
+python-backend/*.spec
+
+# Tauri
+src-tauri/target/
+src-tauri/resources/backend*
+src-tauri/gen/
+
+# Build artifacts
+*.dmg
+*.exe
+*.msi
+*.deb
+*.AppImage
+
+# Claude
+.claude/
