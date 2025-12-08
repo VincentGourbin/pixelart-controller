@@ -46,10 +46,10 @@ target_exe = TAURI_RESOURCES_DIR / EXECUTABLE_NAME
 if source_exe.exists():
     import shutil
     shutil.copy2(source_exe, target_exe)
-    print(f"\n✓ Backend copied to: {target_exe}")
+    print(f"\n[OK] Backend copied to: {target_exe}")
     print(f"  Size: {target_exe.stat().st_size / 1024 / 1024:.2f} MB")
 else:
-    print(f"\n✗ Executable not found at {source_exe}")
+    print(f"\n[ERROR] Executable not found at {source_exe}")
     sys.exit(1)
 
 print("\nBackend build completed!")
