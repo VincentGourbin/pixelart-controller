@@ -77,6 +77,14 @@ jobs:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
           p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
+      - name: Sign Python backend (macOS only)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          codesign --force --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" \
+            --timestamp \
+            --options runtime \
+            src-tauri/resources/backend
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
