@@ -35,6 +35,10 @@
     ],
     "resources": [
       "resources/backend*"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": null,
+      "entitlements": null
+    }
   }
 }
