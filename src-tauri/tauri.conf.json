@@ -38,7 +38,8 @@
     ],
     "macOS": {
       "signingIdentity": null,
-      "entitlements": null
+      "entitlements": null,
+      "notarize": false
     }
   }
 }
