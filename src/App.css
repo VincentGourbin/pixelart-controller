@@ -114,3 +114,9 @@ button {
     background-color: #0f0f0f69;
   }
 }
+
+/* Fix layout: remove sidebar padding */
+.main-panel > .content {
+  padding: 78px 30px 60px 30px !important;
+  overflow-y: auto !important;
+}

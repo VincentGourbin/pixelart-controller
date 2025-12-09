@@ -20,18 +20,9 @@ print(f"Building backend for {PLATFORM} -> {EXECUTABLE_NAME}")
 
 pyinstaller_cmd = [
     "pyinstaller",
-    "--onefile",
-    "--name", "backend",
     "--clean",
     "--noconfirm",
-    "--hidden-import", "uvicorn.logging",
-    "--hidden-import", "uvicorn.loops.auto",
-    "--hidden-import", "uvicorn.protocols.http.auto",
-    "--hidden-import", "uvicorn.protocols.websockets.auto",
-    "--hidden-import", "uvicorn.lifespan.on",
-    "--hidden-import", "bleak",
-    "--hidden-import", "pypixelcolor",
-    str(SRC_DIR / "main.py")
+    "backend.spec"
 ]
 
 result = subprocess.run(pyinstaller_cmd, cwd=BASE_DIR)

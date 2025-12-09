@@ -41,7 +41,7 @@ fn start_backend<R: Runtime>(app: &AppHandle<R>) -> Result<Child, String> {
 /// Wait for the backend to become ready by polling the health endpoint
 fn wait_for_backend() -> Result<(), String> {
     let backend_url = "http://127.0.0.1:8000/";
-    let max_retries = 20;
+    let max_retries = 60;  // 30 seconds total (PyInstaller backend needs time to start)
     let retry_delay = std::time::Duration::from_millis(500);
 
     println!("Waiting for backend to be ready at {}", backend_url);
