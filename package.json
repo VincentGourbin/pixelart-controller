@@ -1,7 +1,7 @@
 {
   "name": "pixelart-controller",
   "productName": "PixelArt Controller",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Desktop application for controlling iPixel Color LED panels",
   "author": "Vincent",
   "license": "MIT",
